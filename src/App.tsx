@@ -64,7 +64,7 @@ const PRESETS: Record<string, Preset> = {
     id: 'film',
     name: 'Preset 1 FILM',
     forceImageName: 'NAPOLEON',
-    searchText: 'locandine film',
+    searchText: 'locandina film',
     defaultImages: {
       image1: screenshot1Film,
       image2: screenshot2Film,
@@ -131,19 +131,6 @@ export default function App() {
   const [expandedImage, setExpandedImage] = useState<1 | 2 | 3 | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
 
-  // --- Preloading Logic ---
-  useEffect(() => {
-    const imagesToPreload = [
-      screenshot1, screenshot2, delpiero, therock, leonardo,
-      screenshot1Film, screenshot2Film, immagine1Film, immagine2Film, immagine3Film
-    ];
-
-    imagesToPreload.forEach(src => {
-      const img = new Image();
-      img.src = src;
-    });
-  }, []);
-
   // Persistence - Sync settings to localStorage whenever they change
   useEffect(() => {
     try {
@@ -163,60 +150,45 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  // Scroll Pause Logic - Refactored for better mobile compatibility using IntersectionObserver
+  // Scroll Pause Logic
   useEffect(() => {
-    if (isMenuOpen || expandedImage || hasLoadedSecond || isPaused) return;
+    if (isMenuOpen || expandedImage) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        // Trigger when the loading ref is visible
-        if (entry.isIntersecting) {
+    const handleScroll = () => {
+      if (hasLoadedSecond) {
+        if (loadingRef.current) {
+          const rect = loadingRef.current.getBoundingClientRect();
+          if (rect.top > window.innerHeight) {
+            setHasLoadedSecond(false);
+          }
+        }
+        return;
+      }
+
+      if (isPaused) return;
+
+      if (loadingRef.current) {
+        const rect = loadingRef.current.getBoundingClientRect();
+        if (rect.top <= window.innerHeight && rect.top > 0) {
           setIsPaused(true);
-          
-          // Disable scrolling
-          const originalStyle = window.getComputedStyle(document.body).overflow;
           document.body.style.overflow = 'hidden';
           
-          // Ensure we are positioned correctly
-          const rect = entry.target.getBoundingClientRect();
-          window.scrollBy({
-            top: rect.top - (window.innerHeight / 2),
-            behavior: 'smooth'
+          window.scrollTo({
+            top: window.scrollY + rect.top - window.innerHeight + 1,
+            behavior: 'auto'
           });
 
           setTimeout(() => {
             setIsPaused(false);
             setHasLoadedSecond(true);
-            document.body.style.overflow = originalStyle;
+            document.body.style.overflow = 'auto';
           }, 1000);
         }
-      },
-      {
-        threshold: 0.1, // Trigger when 10% of the ref is visible
-        rootMargin: '0px 0px -10% 0px' // Slightly offset from bottom
-      }
-    );
-
-    if (loadingRef.current) {
-      observer.observe(loadingRef.current);
-    }
-
-    // Reset logic: if we scroll back up, allow the pause to happen again
-    const handleResetScroll = () => {
-      if (hasLoadedSecond && loadingRef.current) {
-        const rect = loadingRef.current.getBoundingClientRect();
-        if (rect.top > window.innerHeight) {
-          setHasLoadedSecond(false);
-        }
       }
     };
-    window.addEventListener('scroll', handleResetScroll);
 
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', handleResetScroll);
-    };
+    window.addEventListener('scroll', handleScroll, { passive: false });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [isPaused, hasLoadedSecond, isMenuOpen, expandedImage]);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, key: keyof AppSettings) => {
