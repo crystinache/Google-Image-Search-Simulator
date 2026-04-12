@@ -8,18 +8,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Menu, Search, X, User, Upload, Save, RefreshCw } from 'lucide-react';
 
 // --- Assets ---
-import screenshot1 from './screenshot1.jpg';
-import screenshot2 from './screenshot2.jpg';
-import delpiero from './delpiero.jpg';
-import therock from './therock.jpg';
-import leonardo from './LeonardoDiCaprio.jpg';
+const screenshot1 = '/screenshot1.jpg';
+const screenshot2 = '/screenshot2.jpg';
+const delpiero = '/delpiero.jpg';
+const therock = '/therock.jpg';
+const leonardo = '/LeonardoDiCaprio.jpg';
 
 // --- FILM Assets ---
-import screenshot1Film from './Screenshot1FILM.jpg';
-import screenshot2Film from './Screenshot2FILM.jpg';
-import immagine1Film from './Immagine1FILM.jpg';
-import immagine2Film from './Immagine2FILM.jpg';
-import immagine3Film from './Immagine3FILM.jpg';
+const screenshot1Film = '/Screenshot1FILM.jpg';
+const screenshot2Film = '/Screenshot2FILM.jpg';
+const immagine1Film = '/Immagine1FILM.jpg';
+const immagine2Film = '/Immagine2FILM.jpg';
+const immagine3Film = '/Immagine3FILM.jpg';
 
 // --- Types ---
 interface Preset {
@@ -96,10 +96,10 @@ export default function App() {
         
         // Helper to determine if we should use the saved image or the default
         // We only keep saved images if they are Data URLs (user uploads)
-        // Stale paths from previous builds/environments are ignored
         const getValidImage = (savedPath: string | null, defaultPath: string) => {
           if (!savedPath) return defaultPath;
           if (savedPath.startsWith('data:')) return savedPath;
+          // If it's a relative path or an old asset path, use the new default
           return defaultPath;
         };
 
@@ -638,7 +638,7 @@ export default function App() {
 
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                     <p className="text-xs text-blue-700 leading-relaxed">
-                      <strong>Nota:</strong> Per rendere le immagini "definitive" per tutti, caricale nel pannello dei file a sinistra come <code>screenshot1.jpg</code>, <code>screenshot2.jpg</code>, <code>delpiero.jpg</code>, <code>therock.jpg</code> e <code>LeonardoDiCaprio.jpg</code>.
+                      <strong>Nota:</strong> Per rendere le immagini "definitive" per tutti, caricale nella cartella <code>public/</code> con i nomi corretti (es. <code>screenshot1.jpg</code>, <code>delpiero.jpg</code>, ecc.).
                     </p>
                   </div>
                 </div>
