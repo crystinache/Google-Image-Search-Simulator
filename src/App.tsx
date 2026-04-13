@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, Search, X, User, Upload, Save, RefreshCw } from 'lucide-react';
 
-// --- Assets ---
+// --- Assets (Static paths from public folder) ---
 const screenshot1 = '/screenshot1.jpg';
 const screenshot2 = '/screenshot2.jpg';
 const delpiero = '/delpiero.jpg';
@@ -94,14 +94,12 @@ export default function App() {
       try {
         const parsed = JSON.parse(saved);
         
-        // Helper to determine if we should use the saved image or the default
-        // We only keep saved images if they are Data URLs (user uploads)
-        const getValidImage = (savedPath: string | null, defaultPath: string) => {
-          if (!savedPath) return defaultPath;
-          if (savedPath.startsWith('data:')) return savedPath;
-          // If it's a relative path or an old asset path, use the new default
-          return defaultPath;
-        };
+        // Helper to check if a path is an old or broken path
+        const isInvalidPath = (path: string | null) => 
+          !path || 
+          path.includes('.png') || 
+          path.includes('/src/') ||
+          (!path.startsWith('data:') && !path.startsWith('/'));
 
         // We always start with the 'default' preset as per user request
         const preset = PRESETS.default;
@@ -110,11 +108,11 @@ export default function App() {
           ...parsed,
           activePresetId: 'default',
           searchText: preset.searchText,
-          image1: getValidImage(parsed.image1, preset.defaultImages.image1),
-          image2: getValidImage(parsed.image2, preset.defaultImages.image2),
-          expandedImage1: getValidImage(parsed.expandedImage1, preset.defaultImages.expandedImage1),
-          expandedImage2: getValidImage(parsed.expandedImage2, preset.defaultImages.expandedImage2),
-          expandedImage3: getValidImage(parsed.expandedImage3, preset.defaultImages.expandedImage3),
+          image1: isInvalidPath(parsed.image1) ? preset.defaultImages.image1 : parsed.image1,
+          image2: isInvalidPath(parsed.image2) ? preset.defaultImages.image2 : parsed.image2,
+          expandedImage1: isInvalidPath(parsed.expandedImage1) ? preset.defaultImages.expandedImage1 : parsed.expandedImage1,
+          expandedImage2: isInvalidPath(parsed.expandedImage2) ? preset.defaultImages.expandedImage2 : parsed.expandedImage2,
+          expandedImage3: isInvalidPath(parsed.expandedImage3) ? preset.defaultImages.expandedImage3 : parsed.expandedImage3,
         };
       } catch (e) {
         return DEFAULT_SETTINGS;
@@ -133,17 +131,28 @@ export default function App() {
   const loadingRef = useRef<HTMLDivElement>(null);
 
   // --- Preloading Logic ---
-  useEffect(() => {
-    const imagesToPreload = [
-      screenshot1, screenshot2, delpiero, therock, leonardo,
-      screenshot1Film, screenshot2Film, immagine1Film, immagine2Film, immagine3Film
-    ];
-
-    imagesToPreload.forEach(src => {
-      const img = new Image();
-      img.src = src;
+  const preloadImages = (imageUrls: (string | null)[]) => {
+    imageUrls.forEach(url => {
+      if (url && !url.startsWith('data:')) {
+        const img = new Image();
+        img.src = url;
+      }
     });
+  };
+
+  // Preload Default Preset on Mount
+  useEffect(() => {
+    const defaultImages = Object.values(PRESETS.default.defaultImages);
+    preloadImages(defaultImages);
   }, []);
+
+  // Preload Film Preset when activated
+  useEffect(() => {
+    if (settings.activePresetId === 'film') {
+      const filmImages = Object.values(PRESETS.film.defaultImages);
+      preloadImages(filmImages);
+    }
+  }, [settings.activePresetId]);
 
   // Persistence - Sync settings to localStorage whenever they change
   useEffect(() => {
@@ -164,60 +173,45 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  // Scroll Pause Logic - Refactored for better mobile compatibility using IntersectionObserver
+  // Scroll Pause Logic
   useEffect(() => {
-    if (isMenuOpen || expandedImage || hasLoadedSecond || isPaused) return;
+    if (isMenuOpen || expandedImage) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        // Trigger when the loading ref is visible
-        if (entry.isIntersecting) {
+    const handleScroll = () => {
+      if (hasLoadedSecond) {
+        if (loadingRef.current) {
+          const rect = loadingRef.current.getBoundingClientRect();
+          if (rect.top > window.innerHeight) {
+            setHasLoadedSecond(false);
+          }
+        }
+        return;
+      }
+
+      if (isPaused) return;
+
+      if (loadingRef.current) {
+        const rect = loadingRef.current.getBoundingClientRect();
+        if (rect.top <= window.innerHeight && rect.top > 0) {
           setIsPaused(true);
-          
-          // Disable scrolling
-          const originalStyle = window.getComputedStyle(document.body).overflow;
           document.body.style.overflow = 'hidden';
           
-          // Ensure we are positioned correctly
-          const rect = entry.target.getBoundingClientRect();
-          window.scrollBy({
-            top: rect.top - (window.innerHeight / 2),
-            behavior: 'smooth'
+          window.scrollTo({
+            top: window.scrollY + rect.top - window.innerHeight + 1,
+            behavior: 'auto'
           });
 
           setTimeout(() => {
             setIsPaused(false);
             setHasLoadedSecond(true);
-            document.body.style.overflow = originalStyle;
+            document.body.style.overflow = 'auto';
           }, 1000);
         }
-      },
-      {
-        threshold: 0.1, // Trigger when 10% of the ref is visible
-        rootMargin: '0px 0px -10% 0px' // Slightly offset from bottom
-      }
-    );
-
-    if (loadingRef.current) {
-      observer.observe(loadingRef.current);
-    }
-
-    // Reset logic: if we scroll back up, allow the pause to happen again
-    const handleResetScroll = () => {
-      if (hasLoadedSecond && loadingRef.current) {
-        const rect = loadingRef.current.getBoundingClientRect();
-        if (rect.top > window.innerHeight) {
-          setHasLoadedSecond(false);
-        }
       }
     };
-    window.addEventListener('scroll', handleResetScroll);
 
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', handleResetScroll);
-    };
+    window.addEventListener('scroll', handleScroll, { passive: false });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [isPaused, hasLoadedSecond, isMenuOpen, expandedImage]);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, key: keyof AppSettings) => {
@@ -638,7 +632,7 @@ export default function App() {
 
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                     <p className="text-xs text-blue-700 leading-relaxed">
-                      <strong>Nota:</strong> Per rendere le immagini "definitive" per tutti, caricale nella cartella <code>public/</code> con i nomi corretti (es. <code>screenshot1.jpg</code>, <code>delpiero.jpg</code>, ecc.).
+                      <strong>Nota:</strong> Per rendere le immagini "definitive" per tutti, caricale nel pannello dei file a sinistra come <code>screenshot1.jpg</code>, <code>screenshot2.jpg</code>, <code>delpiero.jpg</code>, <code>therock.jpg</code> e <code>LeonardoDiCaprio.jpg</code>.
                     </p>
                   </div>
                 </div>
