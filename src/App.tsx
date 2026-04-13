@@ -8,18 +8,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Menu, Search, X, User, Upload, Save, RefreshCw } from 'lucide-react';
 
 // --- Assets ---
-import screenshot1 from './screenshot1.jpg';
-import screenshot2 from './screenshot2.jpg';
-import delpiero from './delpiero.jpg';
-import therock from './therock.jpg';
-import leonardo from './LeonardoDiCaprio.jpg';
+const screenshot1 = '/images/screenshot1.jpg';
+const screenshot2 = '/images/screenshot2.jpg';
+const delpiero = '/images/delpiero.jpg';
+const therock = '/images/therock.jpg';
+const leonardo = '/images/LeonardoDiCaprio.jpg';
 
 // --- FILM Assets ---
-import screenshot1Film from './Screenshot1FILM.jpg';
-import screenshot2Film from './Screenshot2FILM.jpg';
-import immagine1Film from './Immagine1FILM.jpg';
-import immagine2Film from './Immagine2FILM.jpg';
-import immagine3Film from './Immagine3FILM.jpg';
+const screenshot1Film = '/images/Screenshot1FILM.jpg';
+const screenshot2Film = '/images/Screenshot2FILM.jpg';
+const immagine1Film = '/images/Immagine1FILM.jpg';
+const immagine2Film = '/images/Immagine2FILM.jpg';
+const immagine3Film = '/images/Immagine3FILM.jpg';
 
 // --- Types ---
 interface Preset {
