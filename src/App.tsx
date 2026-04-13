@@ -7,19 +7,19 @@ import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, Search, X, User, Upload, Save, RefreshCw } from 'lucide-react';
 
-// --- Assets (Static paths from public folder) ---
-const screenshot1 = '/screenshot1.jpg';
-const screenshot2 = '/screenshot2.jpg';
-const delpiero = '/delpiero.jpg';
-const therock = '/therock.jpg';
-const leonardo = '/LeonardoDiCaprio.jpg';
+// --- Assets ---
+import screenshot1 from './screenshot1.jpg';
+import screenshot2 from './screenshot2.jpg';
+import delpiero from './delpiero.jpg';
+import therock from './therock.jpg';
+import leonardo from './LeonardoDiCaprio.jpg';
 
 // --- FILM Assets ---
-const screenshot1Film = '/Screenshot1FILM.jpg';
-const screenshot2Film = '/Screenshot2FILM.jpg';
-const immagine1Film = '/Immagine1FILM.jpg';
-const immagine2Film = '/Immagine2FILM.jpg';
-const immagine3Film = '/Immagine3FILM.jpg';
+import screenshot1Film from './Screenshot1FILM.jpg';
+import screenshot2Film from './Screenshot2FILM.jpg';
+import immagine1Film from './Immagine1FILM.jpg';
+import immagine2Film from './Immagine2FILM.jpg';
+import immagine3Film from './Immagine3FILM.jpg';
 
 // --- Types ---
 interface Preset {
@@ -95,11 +95,14 @@ export default function App() {
         const parsed = JSON.parse(saved);
         
         // Helper to check if a path is an old or broken path
+        // We check if it contains '/src/' or if it's a simple string that doesn't look like a Vite asset path or data URL
         const isInvalidPath = (path: string | null) => 
           !path || 
           path.includes('.png') || 
           path.includes('/src/') ||
-          (!path.startsWith('data:') && !path.startsWith('/'));
+          // Vite assets in production usually have a hash or are in /assets/
+          // If it's a simple path like '/screenshot1.jpg' it might be from our previous 'public' attempt
+          (path.startsWith('/') && !path.includes('assets') && !path.includes('data:'));
 
         // We always start with the 'default' preset as per user request
         const preset = PRESETS.default;
