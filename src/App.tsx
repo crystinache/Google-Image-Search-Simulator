@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, Search, X, User, Upload, Save, RefreshCw } from 'lucide-react';
 
@@ -39,11 +39,6 @@ interface Preset {
 interface AppSettings {
   activePresetId: string;
   searchText: string;
-  image1: string | null;
-  image2: string | null;
-  expandedImage1: string | null;
-  expandedImage2: string | null;
-  expandedImage3: string | null;
 }
 
 const PRESETS: Record<string, Preset> = {
@@ -78,11 +73,6 @@ const PRESETS: Record<string, Preset> = {
 const DEFAULT_SETTINGS: AppSettings = {
   activePresetId: 'default',
   searchText: PRESETS.default.searchText,
-  image1: PRESETS.default.defaultImages.image1,
-  image2: PRESETS.default.defaultImages.image2,
-  expandedImage1: PRESETS.default.defaultImages.expandedImage1,
-  expandedImage2: PRESETS.default.defaultImages.expandedImage2,
-  expandedImage3: PRESETS.default.defaultImages.expandedImage3,
 };
 
 // --- Components ---
@@ -93,29 +83,10 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        
-        // Helper to check if a path is an old or broken path
-        // We check if it contains '/src/' or if it's a simple string that doesn't look like a Vite asset path or data URL
-        const isInvalidPath = (path: string | null) => 
-          !path || 
-          path.includes('.png') || 
-          path.includes('/src/') ||
-          // Vite assets in production usually have a hash or are in /assets/
-          // If it's a simple path like '/screenshot1.jpg' it might be from our previous 'public' attempt
-          (path.startsWith('/') && !path.includes('assets') && !path.includes('data:'));
-
-        // We always start with the 'default' preset as per user request
-        const preset = PRESETS.default;
-
         return {
-          ...parsed,
-          activePresetId: 'default',
-          searchText: preset.searchText,
-          image1: isInvalidPath(parsed.image1) ? preset.defaultImages.image1 : parsed.image1,
-          image2: isInvalidPath(parsed.image2) ? preset.defaultImages.image2 : parsed.image2,
-          expandedImage1: isInvalidPath(parsed.expandedImage1) ? preset.defaultImages.expandedImage1 : parsed.expandedImage1,
-          expandedImage2: isInvalidPath(parsed.expandedImage2) ? preset.defaultImages.expandedImage2 : parsed.expandedImage2,
-          expandedImage3: isInvalidPath(parsed.expandedImage3) ? preset.defaultImages.expandedImage3 : parsed.expandedImage3,
+          ...DEFAULT_SETTINGS,
+          activePresetId: parsed.activePresetId || 'default',
+          searchText: PRESETS[parsed.activePresetId || 'default'].searchText,
         };
       } catch (e) {
         return DEFAULT_SETTINGS;
@@ -124,10 +95,13 @@ export default function App() {
     return DEFAULT_SETTINGS;
   });
 
+  // Derived images based on active preset
+  const currentPreset = PRESETS[settings.activePresetId];
+  const currentImages = currentPreset.defaultImages;
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [hasLoadedSecond, setHasLoadedSecond] = useState(false);
-  const [tempSettings, setTempSettings] = useState<AppSettings>(settings);
   const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
   const [clickCount, setClickCount] = useState(0);
   const [expandedImage, setExpandedImage] = useState<1 | 2 | 3 | null>(null);
@@ -166,15 +140,6 @@ export default function App() {
       // If localStorage is full, we might want to alert the user or handle it
     }
   }, [settings]);
-
-  const saveSettings = (newSettings: AppSettings) => {
-    setSettings(newSettings);
-    setIsMenuOpen(false);
-    setHasLoadedSecond(false);
-    setClickCount(0);
-    setExpandedImage(null);
-    window.scrollTo(0, 0);
-  };
 
   // Scroll Pause Logic
   useEffect(() => {
@@ -217,23 +182,6 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isPaused, hasLoadedSecond, isMenuOpen, expandedImage]);
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, key: keyof AppSettings) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file size - localStorage has limits (~5MB total)
-      if (file.size > 2 * 1024 * 1024) {
-        alert('L\'immagine è troppo grande. Prova con un file più piccolo di 2MB.');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setTempSettings(prev => ({ ...prev, [key]: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleGlobalClick = (e: React.MouseEvent) => {
     if (isMenuOpen || expandedImage) return;
 
@@ -248,17 +196,16 @@ export default function App() {
     setClickCount(nextCount);
 
     if (nextCount === 1) {
-      if (settings.expandedImage1) setExpandedImage(1);
+      if (currentImages.expandedImage1) setExpandedImage(1);
     } else if (nextCount === 2) {
-      if (settings.expandedImage2) setExpandedImage(2);
+      if (currentImages.expandedImage2) setExpandedImage(2);
     } else if (nextCount === 3) {
-      if (settings.expandedImage3) setExpandedImage(3);
+      if (currentImages.expandedImage3) setExpandedImage(3);
     }
   };
 
   const handlePersonDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setTempSettings(settings);
     setIsMenuOpen(true);
     document.body.style.overflow = 'auto';
   };
@@ -283,14 +230,8 @@ export default function App() {
     const preset = PRESETS[newPresetId];
     
     const newSettings = {
-      ...settings,
       activePresetId: newPresetId,
       searchText: preset.searchText,
-      image1: preset.defaultImages.image1,
-      image2: preset.defaultImages.image2,
-      expandedImage1: preset.defaultImages.expandedImage1,
-      expandedImage2: preset.defaultImages.expandedImage2,
-      expandedImage3: preset.defaultImages.expandedImage3,
     };
     
     setSettings(newSettings);
@@ -383,9 +324,9 @@ export default function App() {
             <main className="flex-1 flex flex-col" data-screenshot-area="true">
               {/* First Screenshot */}
               <div className="w-full">
-                {settings.image1 ? (
+                {currentImages.image1 ? (
                   <img 
-                    src={settings.image1} 
+                    src={currentImages.image1} 
                     alt="Screenshot 1" 
                     className="w-full h-auto block"
                     referrerPolicy="no-referrer"
@@ -421,9 +362,9 @@ export default function App() {
 
               {/* Second Screenshot */}
               <div className={`w-full transition-opacity duration-300 ${hasLoadedSecond ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
-                {settings.image2 ? (
+                {currentImages.image2 ? (
                   <img 
-                    src={settings.image2} 
+                    src={currentImages.image2} 
                     alt="Screenshot 2" 
                     className="w-full h-auto block"
                     referrerPolicy="no-referrer"
@@ -449,9 +390,9 @@ export default function App() {
                   <div className="w-full min-h-full">
                     <img 
                       src={
-                        expandedImage === 1 ? settings.expandedImage1! : 
-                        expandedImage === 2 ? settings.expandedImage2! : 
-                        settings.expandedImage3!
+                        expandedImage === 1 ? currentImages.expandedImage1! : 
+                        expandedImage === 2 ? currentImages.expandedImage2! : 
+                        currentImages.expandedImage3!
                       } 
                       className="w-full h-auto block"
                       alt="Expanded"
@@ -499,78 +440,40 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Screenshot 1</label>
-                        <div 
-                          onClick={() => document.getElementById('file1')?.click()}
-                          className="border-2 border-dashed border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center cursor-pointer hover:border-[#4285F4] transition-all bg-gray-50 h-32 overflow-hidden relative group"
-                        >
-                          {tempSettings.image1 ? (
-                            <img src={tempSettings.image1} className="absolute inset-0 w-full h-full object-cover opacity-40" />
-                          ) : null}
-                          <Upload className="w-6 h-6 text-gray-400 relative z-10" />
-                          <input id="file1" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'image1')} />
+                        <div className="border border-gray-100 rounded-xl p-2 bg-gray-50 h-32 overflow-hidden relative">
+                          <img src={PRESETS[editingPresetId].defaultImages.image1} className="w-full h-full object-cover" />
                         </div>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-400 mb-2 uppercase">Screenshot 2</label>
-                        <div 
-                          onClick={() => document.getElementById('file2')?.click()}
-                          className="border-2 border-dashed border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center cursor-pointer hover:border-[#4285F4] transition-all bg-gray-50 h-32 overflow-hidden relative group"
-                        >
-                          {tempSettings.image2 ? (
-                            <img src={tempSettings.image2} className="absolute inset-0 w-full h-full object-cover opacity-40" />
-                          ) : null}
-                          <Upload className="w-6 h-6 text-gray-400 relative z-10" />
-                          <input id="file2" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'image2')} />
+                        <div className="border border-gray-100 rounded-xl p-2 bg-gray-50 h-32 overflow-hidden relative">
+                          <img src={PRESETS[editingPresetId].defaultImages.image2} className="w-full h-full object-cover" />
                         </div>
                       </div>
                     </div>
 
                     {/* Expanded Images */}
                     <div className="space-y-6">
-                      <h3 className="text-sm font-bold text-gray-800 border-b pb-2">Immagini Espandibili</h3>
+                      <h3 className="text-sm font-bold text-gray-800 border-b pb-2">Immagini Espandibili (Solo Visualizzazione)</h3>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">1: Prima immagine selezionata (1° click)</label>
-                        <div 
-                          onClick={() => document.getElementById('exp1')?.click()}
-                          className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-[#4285F4] transition-all bg-gray-50 h-40 overflow-hidden relative group"
-                        >
-                          {tempSettings.expandedImage1 ? (
-                            <img src={tempSettings.expandedImage1} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity" />
-                          ) : null}
-                          <Upload className="w-8 h-8 text-gray-400 mb-2 relative z-10" />
-                          <span className="text-sm text-gray-500 relative z-10">Tocca per caricare</span>
-                          <input id="exp1" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'expandedImage1')} />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">1: Prima immagine (1° click)</label>
+                        <div className="border border-gray-100 rounded-xl p-2 bg-gray-50 h-40 overflow-hidden relative">
+                          <img src={PRESETS[editingPresetId].defaultImages.expandedImage1} className="w-full h-full object-cover" />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">2: Seconda immagine selezionata (2° click)</label>
-                        <div 
-                          onClick={() => document.getElementById('exp2')?.click()}
-                          className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-[#4285F4] transition-all bg-gray-50 h-40 overflow-hidden relative group"
-                        >
-                          {tempSettings.expandedImage2 ? (
-                            <img src={tempSettings.expandedImage2} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity" />
-                          ) : null}
-                          <Upload className="w-8 h-8 text-gray-400 mb-2 relative z-10" />
-                          <span className="text-sm text-gray-500 relative z-10">Tocca per caricare</span>
-                          <input id="exp2" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'expandedImage2')} />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">2: Seconda immagine (2° click)</label>
+                        <div className="border border-gray-100 rounded-xl p-2 bg-gray-50 h-40 overflow-hidden relative">
+                          <img src={PRESETS[editingPresetId].defaultImages.expandedImage2} className="w-full h-full object-cover" />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">3: Terza immagine selezionata (3° click)</label>
-                        <div 
-                          onClick={() => document.getElementById('exp3')?.click()}
-                          className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-[#4285F4] transition-all bg-gray-50 h-40 overflow-hidden relative group"
-                        >
-                          {tempSettings.expandedImage3 ? (
-                            <img src={tempSettings.expandedImage3} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity" />
-                          ) : null}
-                          <Upload className="w-8 h-8 text-gray-400 mb-2 relative z-10" />
-                          <span className="text-sm text-gray-500 relative z-10">Tocca per caricare</span>
-                          <input id="exp3" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'expandedImage3')} />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">3: Terza immagine (3° click)</label>
+                        <div className="border border-gray-100 rounded-xl p-2 bg-gray-50 h-40 overflow-hidden relative">
+                          <img src={PRESETS[editingPresetId].defaultImages.expandedImage3} className="w-full h-full object-cover" />
                         </div>
                       </div>
                     </div>
@@ -581,12 +484,7 @@ export default function App() {
                     {Object.values(PRESETS).map((preset) => (
                       <button
                         key={preset.id}
-                        onClick={() => {
-                          setEditingPresetId(preset.id);
-                          // When switching preset in menu, we load its default or current settings
-                          // For simplicity, we just allow editing the current active settings
-                          // but labeled as the preset.
-                        }}
+                        onClick={() => setEditingPresetId(preset.id)}
                         className="w-full text-left p-4 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all group"
                       >
                         <div className="flex justify-between items-center">
@@ -596,7 +494,7 @@ export default function App() {
                             <div className="text-sm text-gray-500">Search word: {preset.searchText}</div>
                           </div>
                           <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                            <Upload className="w-5 h-5 text-[#4285F4]" />
+                            <Search className="w-5 h-5 text-[#4285F4]" />
                           </div>
                         </div>
                       </button>
@@ -617,25 +515,9 @@ export default function App() {
                     Resetta contatore click ({clickCount})
                   </button>
 
-                  <button 
-                    onClick={() => {
-                      if (confirm('Vuoi davvero ripristinare le immagini predefinite?')) {
-                        localStorage.removeItem('google_sim_settings');
-                        setTempSettings(DEFAULT_SETTINGS);
-                        setSettings(DEFAULT_SETTINGS);
-                        alert('Impostazioni resettate. L\'app verrà ricaricata.');
-                        window.location.reload();
-                      }
-                    }}
-                    className="text-sm text-red-500 font-medium flex items-center gap-2"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Ripristina immagini predefinite
-                  </button>
-
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                     <p className="text-xs text-blue-700 leading-relaxed">
-                      <strong>Nota:</strong> Per rendere le immagini "definitive" per tutti, caricale nel pannello dei file a sinistra come <code>screenshot1.jpg</code>, <code>screenshot2.jpg</code>, <code>delpiero.jpg</code>, <code>therock.jpg</code> e <code>LeonardoDiCaprio.jpg</code>.
+                      <strong>Modalità Sola Lettura:</strong> Le immagini sono bloccate sui preset predefiniti per garantire la massima stabilità su Vercel.
                     </p>
                   </div>
                 </div>
@@ -643,11 +525,11 @@ export default function App() {
 
               <div className="mt-8 pb-4">
                 <button 
-                  onClick={() => saveSettings(tempSettings)}
+                  onClick={() => setIsMenuOpen(false)}
                   className="w-full bg-[#4285F4] text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-[#3367D6] active:scale-[0.98] transition-all shadow-xl shadow-blue-100"
                 >
                   <Save className="w-6 h-6" />
-                  Salva e Applica
+                  Chiudi Menu
                 </button>
               </div>
             </div>
