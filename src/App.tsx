@@ -21,6 +21,20 @@ const immagine1Film = '/images/Immagine1FILM.jpg';
 const immagine2Film = '/images/Immagine2FILM.jpg';
 const immagine3Film = '/images/Immagine3FILM.jpg';
 
+// --- MONUMENTI Assets ---
+const screenshot1Monumenti = '/images/screenshot1MONUMENTI.jpg';
+const screenshot2Monumenti = '/images/screenshot2MONUMENTI.jpg';
+const immagine1Monumenti = '/images/immagine1MONUMENTI.jpg';
+const immagine2Monumenti = '/images/immagine2MONUMENTI.jpg';
+const immagine3Monumenti = '/images/immagine3MONUMENTI.jpg';
+
+// --- ANIMALI Assets ---
+const screenshot1Animali = '/images/screenshot1ANIMALI.jpg';
+const screenshot2Animali = '/images/screenshot2ANIMALI.jpg';
+const immagine1Animali = '/images/immagine1ANIMALI.jpg';
+const immagine2Animali = '/images/immagine2ANIMALI.jpg';
+const immagine3Animali = '/images/immagine3ANIMALI.jpg';
+
 // --- Types ---
 interface Preset {
   id: string;
@@ -66,6 +80,32 @@ const PRESETS: Record<string, Preset> = {
       expandedImage1: immagine1Film,
       expandedImage2: immagine2Film,
       expandedImage3: immagine3Film,
+    }
+  },
+  monumenti: {
+    id: 'monumenti',
+    name: 'Preset 2 MONUMENTI',
+    forceImageName: 'Statua della Libertà',
+    searchText: 'monumenti famosi',
+    defaultImages: {
+      image1: screenshot1Monumenti,
+      image2: screenshot2Monumenti,
+      expandedImage1: immagine1Monumenti,
+      expandedImage2: immagine2Monumenti,
+      expandedImage3: immagine3Monumenti,
+    }
+  },
+  animali: {
+    id: 'animali',
+    name: 'Preset 3 ANIMALI',
+    forceImageName: 'Elefante',
+    searchText: 'cuccioli animali',
+    defaultImages: {
+      image1: screenshot1Animali,
+      image2: screenshot2Animali,
+      expandedImage1: immagine1Animali,
+      expandedImage2: immagine2Animali,
+      expandedImage3: immagine3Animali,
     }
   }
 };
@@ -123,11 +163,11 @@ export default function App() {
     preloadImages(defaultImages);
   }, []);
 
-  // Preload Film Preset when activated
+  // Preload active preset images
   useEffect(() => {
-    if (settings.activePresetId === 'film') {
-      const filmImages = Object.values(PRESETS.film.defaultImages);
-      preloadImages(filmImages);
+    if (settings.activePresetId && PRESETS[settings.activePresetId]) {
+      const presetImages = Object.values(PRESETS[settings.activePresetId].defaultImages);
+      preloadImages(presetImages);
     }
   }, [settings.activePresetId]);
 
@@ -234,15 +274,32 @@ export default function App() {
 
   const handleAiModeDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const newPresetId = settings.activePresetId === 'default' ? 'film' : 'default';
-    const preset = PRESETS[newPresetId];
-    
-    const newSettings = {
-      activePresetId: newPresetId,
+    switchPreset('film');
+  };
+
+  const handleTuttiDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    switchPreset('monumenti');
+  };
+
+  const handleImmaginiDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    switchPreset('default');
+  };
+
+  const handleNotizieDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    switchPreset('animali');
+  };
+
+  const switchPreset = (id: string) => {
+    const preset = PRESETS[id];
+    if (!preset) return;
+
+    setSettings({
+      activePresetId: id,
       searchText: preset.searchText,
-    };
-    
-    setSettings(newSettings);
+    });
     setHasLoadedSecond(false);
     setClickCount(0);
     setExpandedImage(null);
@@ -311,9 +368,24 @@ export default function App() {
                   >
                     AI Mode
                   </div>
-                  <div className="pb-2">Tutti</div>
-                  <div className="pb-2 text-[#4285F4] border-b-2 border-[#4285F4]">Immagini</div>
-                  <div className="pb-2">Notizie</div>
+                  <div 
+                    onDoubleClick={handleTuttiDoubleClick}
+                    className="pb-2 cursor-pointer"
+                  >
+                    Tutti
+                  </div>
+                  <div 
+                    onDoubleClick={handleImmaginiDoubleClick}
+                    className="pb-2 text-[#4285F4] border-b-2 border-[#4285F4] cursor-pointer"
+                  >
+                    Immagini
+                  </div>
+                  <div 
+                    onDoubleClick={handleNotizieDoubleClick}
+                    className="pb-2 cursor-pointer"
+                  >
+                    Notizie
+                  </div>
                   <div className="pb-2">Video</div>
                   <div className="pb-2">Mappe</div>
                 </div>
