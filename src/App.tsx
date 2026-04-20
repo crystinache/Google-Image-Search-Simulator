@@ -173,6 +173,14 @@ export default function App() {
             setIsPaused(false);
             setHasLoadedSecond(true);
             document.body.style.overflow = 'auto';
+            
+            // Automatic smooth scroll to show both screenshots (half and half)
+            setTimeout(() => {
+              window.scrollBy({
+                top: window.innerHeight / 2,
+                behavior: 'smooth'
+              });
+            }, 100);
           }, 1000);
         }
       }
